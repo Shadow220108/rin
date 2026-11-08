@@ -8,13 +8,13 @@ Rin
 
 <h3 align="center">
 
-A tiny USB-C to UART converter so I can stop borrowing one :D
+A tiny USB-C to UART converter 
 
 </h3>
 
 <div align="center">
-  <img width="400" alt="front" src="images/front_art.png" />
-  <img width="400" alt="back" src="images/back_art.png" />
+  <img  height="245" alt="front" src="images/front_art.png" />
+  <img  height="245" alt="back" src="images/back_art.png" />
 </div>
 
 Rin is a small USB to UART board built around the Microchip MCP2200. You plug it into your laptop with a USB-C cable and it lets you talk to microcontrollers over serial, like flashing a board or reading its serial monitor. It also has a jumper to switch between 3.3V and 5V logic, so it works with both 3.3V and 5V boards.
@@ -68,14 +68,6 @@ All the passives are 0603, the chip is SOIC-20 and there's a ground pour on both
 | --- | --- |
 | <img width="450" alt="final front" src="images/final_front_gold.png" /> | <img width="450" alt="final back" src="images/final_back_gold.png" /> |
 
-## Files
-
-| Folder | What's inside |
-| --- | --- |
-| `PCB` | KiCad project, schematic and PCB |
-| `production` | Gerbers, drill files, BOM and position files for JLCPCB |
-| `images` | Screenshots and renders |
-| `JOURNAL.md` | The whole design process, step by step |
 
 ## Why was it made?
 
