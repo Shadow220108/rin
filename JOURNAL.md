@@ -1,7 +1,7 @@
 <div align="center">
   <h1>Rin</h1>
   <h3>by shadow</h3>
-  <h3>total time spent : 22 hours </h3>
+  <h3>total time spent : 38 hours </h3>
 </div>
 
 --- 
@@ -17,6 +17,16 @@ first thing was picking the chip. i saw a lot of people use the ch340 or the cp2
 - it has 8 gpio pins so i can break out extra pins and use them for other stuff later
 - it has its own pins for tx and rx leds, so the blinky lights work without me doing anything extra
 - the datasheet has a full example circuit which helped a LOT since this is my first usb chip board  
+
+<div align="center">
+  
+| the mcp2200 pinout |
+| --- |
+| <img width="560" alt="mcp2200 pinout" src="images/mcp2200_pinout.png" /> |
+
+</div>
+
+i stared at this pinout for way too long trying to figure out what every pin does lol  
 
 spent most of these 2 hours just reading the datasheet. like actually reading it, not skimming. figured out it needs a 12mhz crystal, which caps go where, what goes on the vusb pin and how the usb lines connect. also wrote down what i want on the board:
 - some kind of usb port to plug into the laptop
@@ -323,4 +333,292 @@ then made the gerbers, drill files, bom and the position file for jlcpcb. got a 
 
 </div>
 
-this would be the last journal, if you read till here, thank you :D
+--- 
+
+### journal #14 v2 time! picking a new chip  
+time spent : 1.5 hours   
+
+  
+ok so after finishing rin v1 i kept looking at it and thinking it could be better. its kinda big, the mcp2200 needs a crystal, and the thing i actually use a usb to uart for the most is flashing esp32s. and with most adapters you have to hold the boot button and press reset every single time you upload, which is so annoying  
+  
+so i decided to make a v2. this time i went with the ch340c, its super common, cheap, and the "c" version has the oscillator built in so i dont need a crystal at all, less parts and less space. read through its datasheet and a bunch of esp32 dev board schematics to see how they do the auto reset thing  
+  
+plan for v2:
+- smaller board
+- ch340c instead of mcp2200
+- esd protection and a fuse on the usb side
+- a proper slide switch for 5v / 3.3v instead of a jumper
+- esp32 auto reset so you never have to press the boot button again
+  
+
+<div align="center">
+  
+| the ch340c part of the schematic |
+| --- |
+| <img width="800" alt="ch340c section" src="images/v2/ch340c_section.png" /> |
+
+</div>
+
+--- 
+
+### journal #15 usb c input and protection  
+time spent : 1.5 hours   
+
+  
+started the v2 schematic with the usb c side again. kept the 5.1k resistors on CC1 and CC2 from v1 (not making that mistake ever lol) and added two new things this time:
+- a 500mA polyfuse (F1) on vbus. if whatever i plug into the headers shorts out, the fuse cuts the power so it doesnt hurt my laptops usb port
+- a USBLC6-2SC6 on the D+ and D- lines, its a tiny esd protection chip so static from touching the board doesnt kill the ch340c  
+
+v1 didnt have any of this so it was basically raw usb going straight into the chip, v2 is way safer
+  
+
+<div align="center">
+  
+| usb c input + protection |
+| --- |
+| <img width="800" alt="usb c protection" src="images/v2/usb_c_protection.png" /> |
+
+| the esd chip |
+| --- |
+| <img width="500" alt="usblc6 esd" src="images/v2/usblc6_esd.png" /> |
+
+</div>
+
+--- 
+
+### journal #16 power and the slide switch  
+time spent : 1 hour   
+
+  
+for the 3.3v regulator i switched to the ap2112k-3.3. its tiny (sot-23-5) and can give 600mA, so its enough to power an esp32 straight from the header  
+  
+the jumper from v1 worked but its easy to lose the little jumper cap, so this time i used a small slide switch (SW1). slide it to 5V and the io pins run at 5v, slide it to 3V3 and they run at 3.3v. the ch340c has a V3 pin that needs to be tied to vcc when running at 3.3v, so the switch also takes care of that (got that from the datasheet). also added a blue power led with a 1k resistor
+  
+
+<div align="center">
+  
+| power and switch |
+| --- |
+| <img width="800" alt="power and switch" src="images/v2/power_and_switch.png" /> |
+
+</div>
+
+--- 
+
+### journal #17 headers and esp32 auto reset  
+time spent : 1.5 hours   
+
+  
+this was the part i was most excited about. the auto reset circuit is two MMBT3904 transistors (Q1 and Q2) with 10k resistors, connected to DTR and RTS from the ch340c. when you hit upload, esptool toggles DTR and RTS in a certain order which pulls EN and IO0 low at the right time, so the esp32 goes into flashing mode by itself. its the same circuit most esp32 dev boards use so i knew it works  
+  
+for the headers i went with:
+- J2, a 6 pin header with the standard ftdi pinout: GND, CTS, VCC, TX, RX, DTR. so it plugs straight into stuff like an arduino pro mini
+- J3, a 3 pin header with EN, IO0 and GND for the esp32  
+
+also put 470 ohm resistors in series on TX and RX so if the other board has its own power it cant push current back into the ch340c
+  
+
+<div align="center">
+  
+| headers and auto reset |
+| --- |
+| <img width="800" alt="headers and auto reset" src="images/v2/headers_auto_reset.png" /> |
+
+</div>
+
+--- 
+
+### journal #18 schematic boxes and notes  
+time spent : 1 hour   
+
+  
+learned from v1 and did the boxes from the start this time. split it into 4 sections, usb c input + protection, power, ch340c and headers + auto reset. also wrote small notes inside each box explaining why stuff is there, like why the 5.1k resistors exist and how the switch works, so future me (or anyone) doesnt have to guess  
+  
+ran erc, added the PWR_FLAGs right away this time so there were way less errors than v1
+  
+
+<div align="center">
+  
+| full v2 schematic |
+| --- |
+| <img width="900" alt="full schematic" src="images/v2/full_schematic.png" /> |
+
+</div>
+
+--- 
+
+### journal #19 footprints and first try at routing  
+time spent : 2 hours   
+
+  
+for v2 i went smaller on the parts, 0402 for most of the resistors and caps, soic-16 for the ch340c, sot-23 for the transistors and regulator and the esd chip. the board is 38 x 25 mm now, smaller than v1 even with more stuff on it  
+  
+i also made a "Power" net class so the vbus and 5v traces are 0.4mm wide while the normal signal traces stay at 0.2mm, since the power lines carry more current. then i placed everything and just started routing to see if it would fit
+  
+
+<div align="center">
+  
+| first routing attempt |
+| --- |
+| <img width="850" alt="first routing try" src="images/v2/first_routing_try.png" /> |
+
+</div>
+
+it did fit but it was a mess. traces going all over the place and way too many vias
+
+--- 
+
+### journal #20 ripping it up  
+time spent : 1 hour   
+
+  
+so i deleted all the traces and started again lol. moved the parts around first so things that connect to each other are actually next to each other. the switch and fuse went to the top edge, the esd chip right next to the usb c, the leds and transistors to the right side near the headers. took a while but the ratsnest looked much cleaner after
+  
+
+<div align="center">
+  
+| all the traces ripped up |
+| --- |
+| <img width="850" alt="ripped up" src="images/v2/ripped_up.png" /> |
+
+</div>
+
+--- 
+
+### journal #21 routing again  
+time spent : 2.2 hours   
+
+  
+round two of routing. went section by section this time and zoomed in a lot  
+  
+the regulator and the leds first, with the thick 5v traces going around everything
+  
+
+<div align="center">
+  
+| regulator | power led |
+| --- | --- |
+| <img width="450" alt="regulator closeup" src="images/v2/regulator_closeup.png" /> | <img width="400" alt="led closeup" src="images/v2/led_closeup.png" /> |
+
+</div>
+
+the usb c pads are so tiny, vbus had to come out of the A4 pad with the thick trace and squeeze past the other pins
+
+<div align="center">
+  
+| usb c pads |
+| --- |
+| <img width="600" alt="usb c pads" src="images/v2/usb_c_pads.png" /> |
+
+</div>
+
+then the slide switch and the fuse, which needed a couple of vias to get the 3V3 and V3 lines to the other side
+
+<div align="center">
+  
+| switch and fuse |
+| --- |
+| <img width="800" alt="switch and fuse" src="images/v2/switch_and_fuse.png" /> |
+
+</div>
+
+and last the auto reset transistors, the DTR and RTS lines cross each other so one of them had to go on the back layer
+
+<div align="center">
+  
+| auto reset transistors |
+| --- |
+| <img width="420" alt="transistors routing" src="images/v2/transistors_routing.png" /> |
+
+</div>
+
+--- 
+
+### journal #22 ground pour and stitching vias  
+time spent : 1 hour   
+
+  
+same as v1, added a ground pour on the top and bottom. then added a bunch of stitching vias all over the board to connect both grounds together properly, ended up with 31 vias total. ran drc and fixed the last few clearance errors
+  
+
+<div align="center">
+  
+| routed | with the pour | with stitching vias |
+| --- | --- | --- |
+| <img width="300" alt="routed" src="images/v2/routed.png" /> | <img width="300" alt="ground pour" src="images/v2/ground_pour.png" /> | <img width="300" alt="stitching vias" src="images/v2/stitching_vias.png" /> |
+
+</div>
+
+--- 
+
+### journal #23 3d check  
+time spent : 0.5 hours   
+
+  
+checked it in the 3d viewer, usb c is right at the edge, switch is reachable and the headers line up. with the pin headers on it looks like a real usb adapter now  
+  
+
+<div align="center">
+  
+| 3d with headers |
+| --- |
+| <img width="700" alt="3d with headers" src="images/v2/3d_with_headers.png" /> |
+
+</div>
+
+--- 
+
+### journal #24 silkscreen labels  
+time spent : 1 hour   
+
+  
+on v1 you had to check the readme to know which pin is which, which is annoying. so on v2 i wrote the pin names right on the silkscreen next to the headers, GND CTS VCC TX RX DTR and EN IO0 GND. also moved all the reference names so they dont sit on pads and look neat  
+  
+
+<div align="center">
+  
+| labels on the board |
+| --- |
+| <img width="700" alt="3d labels" src="images/v2/3d_labels.png" /> |
+
+| front | back |
+| --- | --- |
+| <img width="450" alt="3d front" src="images/v2/3d_front.png" /> | <img width="450" alt="3d back" src="images/v2/3d_back.png" /> |
+
+</div>
+
+--- 
+
+### journal #25 making a poster  
+time spent : 1 hour   
+
+  
+wanted something nice to show off the project so i made a poster for rin. used the gold render from v1, big RIN text on the side, a short description of what it does and a qr code that goes to the github. took a while to get the layout and the colours right but im really happy with how it came out :D
+  
+
+<div align="center">
+  
+| the poster |
+| --- |
+| <img width="475" alt="poster" src="images/v2/poster.png" /> |
+
+</div>
+
+--- 
+
+### journal #26 final checks and github  
+time spent : 0.8 hours   
+
+  
+last round of checks, ran erc and drc one more time, looked over every trace again and compared the board to the schematic. then took the final screenshots, added all the v2 files and pictures to the repo and updated this journal
+  
+
+<div align="center">
+  
+| final v2 pcb |
+| --- |
+| <img width="850" alt="final pcb" src="images/v2/final_pcb.png" /> |
+
+</div>
+
+thats it for rin v2! if you read till here, thank you :D
